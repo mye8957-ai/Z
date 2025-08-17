@@ -1,0 +1,87 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 保存自定义速度
+local customSpeed = nil
+
+local function applySpeed(character)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and customSpeed then
+        humanoid.WalkSpeed = customSpeed
+    end
+end
+
+-- 每次角色生成时应用自定义速度
+LocalPlayer.CharacterAdded:Connect(function(character)
+    -- 等 Humanoid 创建完成
+    character:WaitForChild("Humanoid")
+    applySpeed(character)
+end)
+
+-- 创建输入框弹窗
+local function createSpeedInputWindow()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "SpeedInputGui"
+    screenGui.Parent = playerGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 150)
+    frame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.Parent = screenGui
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "设置移动速度"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Parent = frame
+
+    local speedBox = Instance.new("TextBox")
+    speedBox.Size = UDim2.new(1, -20, 0, 40)
+    speedBox.Position = UDim2.new(0, 10, 0, 50)
+    speedBox.PlaceholderText = "输入速度（>=16）"
+    speedBox.Text = customSpeed and tostring(customSpeed) or ""
+    speedBox.ClearTextOnFocus = true
+    speedBox.TextColor3 = Color3.fromRGB(0,0,0)
+    speedBox.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    speedBox.Parent = frame
+
+    local confirmBtn = Instance.new("TextButton")
+    confirmBtn.Size = UDim2.new(0.5, -15, 0, 30)
+    confirmBtn.Position = UDim2.new(0, 10, 0, 110)
+    confirmBtn.Text = "确定"
+    confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    confirmBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    confirmBtn.Parent = frame
+
+    local cancelBtn = Instance.new("TextButton")
+    cancelBtn.Size = UDim2.new(0.5, -15, 0, 30)
+    cancelBtn.Position = UDim2.new(0.5, 5, 0, 110)
+    cancelBtn.Text = "取消"
+    cancelBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+    cancelBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    cancelBtn.Parent = frame
+
+    -- 确定按钮逻辑
+    confirmBtn.MouseButton1Click:Connect(function()
+        local value = tonumber(speedBox.Text)
+        if value and value >= 16 then
+            customSpeed = value
+            applySpeed(LocalPlayer.Character)
+            screenGui:Destroy()
+        else
+            speedBox.Text = ""
+            speedBox.PlaceholderText = "请输入 >= 16 的数字"
+        end
+    end)
+
+    cancelBtn.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+    end)
+end
+
+-- 调用方法
+createSpeedInputWindow()
