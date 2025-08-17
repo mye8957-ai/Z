@@ -1,0 +1,243 @@
+-- Roblox移速修改器脚本(防重复生成版)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- 默认速度
+local DEFAULT_WALK_SPEED = 16
+local currentSpeed = DEFAULT_WALK_SPEED
+local isEnabled = false
+
+-- 检查是否已有UI存在
+local function hasExistingUI()
+    local playerGui = player:FindFirstChildOfClass("PlayerGui")
+    if not playerGui then return false end
+    return playerGui:FindFirstChild("SpeedChangerGUI") ~= nil
+end
+
+-- 创建主GUI
+local function createSpeedChangerGUI()
+    -- 如果已有UI存在则不再创建
+    if hasExistingUI() then
+        return
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "SpeedChangerGUI"
+    ScreenGui.Parent = player.PlayerGui
+    ScreenGui.ResetOnSpawn = false
+
+    -- 创建主框架
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 220, 0, 160)
+    MainFrame.Position = UDim2.new(0.5, -110, 0.5, -80)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Parent = ScreenGui
+
+    -- 左上角Z图标
+    local ZIcon = Instance.new("TextLabel")
+    ZIcon.Name = "ZIcon"
+    ZIcon.Size = UDim2.new(0, 20, 0, 20)
+    ZIcon.Position = UDim2.new(0, 5, 0, 5)
+    ZIcon.BackgroundTransparency = 1
+    ZIcon.Text = "Z"
+    ZIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ZIcon.Font = Enum.Font.SourceSansBold
+    ZIcon.TextSize = 16
+    ZIcon.Parent = MainFrame
+
+    -- 标题
+    local Title = Instance.new("TextLabel")
+    Title.Name = "Title"
+    Title.Size = UDim2.new(1, -30, 0, 30)
+    Title.Position = UDim2.new(0, 30, 0, 0)
+    Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Title.Text = "移速修改器"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 18
+    Title.TextWrapped = true
+    Title.Parent = MainFrame
+
+    -- 当前速度显示
+    local SpeedLabel = Instance.new("TextLabel")
+    SpeedLabel.Name = "SpeedLabel"
+    SpeedLabel.Size = UDim2.new(1, -20, 0, 30)
+    SpeedLabel.Position = UDim2.new(0, 10, 0, 40)
+    SpeedLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    SpeedLabel.Text = "当前速度: " .. currentSpeed
+    SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SpeedLabel.Font = Enum.Font.SourceSans
+    SpeedLabel.TextSize = 16
+    SpeedLabel.TextWrapped = true
+    SpeedLabel.Parent = MainFrame
+
+    -- 按钮容器
+    local ButtonsFrame = Instance.new("Frame")
+    ButtonsFrame.Name = "ButtonsFrame"
+    ButtonsFrame.Size = UDim2.new(1, -20, 0, 80)
+    ButtonsFrame.Position = UDim2.new(0, 10, 0, 80)
+    ButtonsFrame.BackgroundTransparency = 1
+    ButtonsFrame.Parent = MainFrame
+
+    -- 创建按钮函数
+    local function createButton(name, text, position, size, callback)
+        local button = Instance.new("TextButton")
+        button.Name = name
+        button.Size = size
+        button.Position = position
+        button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.Text = text
+        button.Font = Enum.Font.SourceSans
+        button.TextSize = 14
+        button.TextWrapped = true
+        button.Parent = ButtonsFrame
+        
+        button.MouseButton1Click:Connect(callback)
+        return button
+    end
+
+    -- 拖动功能
+    local function makeDraggable(frame)
+        local dragging = false
+        local dragInput, dragStart, startPos
+
+        local function updateInput(input)
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
+                                      startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+
+        frame.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                dragStart = input.Position
+                startPos = frame.Position
+                
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+
+        frame.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+                updateInput(input)
+            end
+        end)
+    end
+
+    -- 创建按钮
+    local enabledButton = createButton("EnableButton", isEnabled and "关闭" or "开启", UDim2.new(0, 0, 0, 0), UDim2.new(0.45, 0, 0, 30), function()
+        isEnabled = not isEnabled
+        if isEnabled then
+            humanoid.WalkSpeed = currentSpeed
+            enabledButton.Text = "关闭"
+        else
+            humanoid.WalkSpeed = DEFAULT_WALK_SPEED
+            enabledButton.Text = "开启"
+        end
+    end)
+
+    createButton("IncreaseButton", "+10", UDim2.new(0, 0, 0, 35), UDim2.new(0.45, 0, 0, 30), function()
+        currentSpeed = currentSpeed + 10
+        SpeedLabel.Text = "当前速度: " .. currentSpeed
+        if isEnabled then
+            humanoid.WalkSpeed = currentSpeed
+        end
+    end)
+
+    createButton("DecreaseButton", "-10", UDim2.new(0.55, 0, 0, 35), UDim2.new(0.45, 0, 0, 30), function()
+        currentSpeed = math.max(10, currentSpeed - 10)
+        SpeedLabel.Text = "当前速度: " .. currentSpeed
+        if isEnabled then
+            humanoid.WalkSpeed = currentSpeed
+        end
+    end)
+
+    -- 退出按钮
+    createButton("ExitButton", "退出", UDim2.new(0.55, 0, 0, 0), UDim2.new(0.45, 0, 0, 30), function()
+        humanoid.WalkSpeed = DEFAULT_WALK_SPEED
+        ScreenGui:Destroy()
+    end)
+
+    -- 缩小按钮
+    local minimized = false
+    local minimizedFrame = Instance.new("Frame")
+    minimizedFrame.Name = "MinimizedFrame"
+    minimizedFrame.Size = UDim2.new(0, 50, 0, 50)
+    minimizedFrame.Position = MainFrame.Position
+    minimizedFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    minimizedFrame.BorderSizePixel = 0
+    minimizedFrame.Active = true
+    minimizedFrame.Visible = false
+    minimizedFrame.Parent = ScreenGui
+
+    -- 圆角效果
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.3, 0)
+    corner.Parent = minimizedFrame
+
+    -- 白色描边
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 2
+    stroke.Parent = minimizedFrame
+
+    local minimizedButton = Instance.new("TextButton")
+    minimizedButton.Name = "MinimizedButton"
+    minimizedButton.Size = UDim2.new(1, 0, 1, 0)
+    minimizedButton.Position = UDim2.new(0, 0, 0, 0)
+    minimizedButton.BackgroundTransparency = 1
+    minimizedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    minimizedButton.Text = "Z"
+    minimizedButton.Font = Enum.Font.SourceSansBold
+    minimizedButton.TextSize = 24
+    minimizedButton.Parent = minimizedFrame
+
+    -- 为悬浮窗添加拖动功能
+    makeDraggable(minimizedFrame)
+
+    minimizedButton.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        MainFrame.Visible = minimized
+        minimizedFrame.Visible = not minimized
+    end)
+
+    createButton("MinimizeButton", "缩小", UDim2.new(0, 0, 0, 70), UDim2.new(1, 0, 0, 30), function()
+        minimized = not minimized
+        MainFrame.Visible = not minimized
+        minimizedFrame.Visible = minimized
+        minimizedFrame.Position = MainFrame.Position
+    end)
+
+    -- 为UI添加拖动功能
+    makeDraggable(MainFrame)
+end
+
+-- 角色重生处理
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoid = character:WaitForChild("Humanoid")
+    if isEnabled then
+        humanoid.WalkSpeed = currentSpeed
+    end
+    -- 重生后重新创建UI
+    createSpeedChangerGUI()
+end)
+
+-- 初始化
+createSpeedChangerGUI()
+if isEnabled then
+    humanoid.WalkSpeed = currentSpeed
+end
