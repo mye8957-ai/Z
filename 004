@@ -1,0 +1,35 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- 核心函数：让角色穿墙
+local function noClip(character)
+    -- 循环处理所有部件
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and part.CanCollide == true then
+            part.CanCollide = false
+        end
+    end
+
+    -- 持续保持 CanCollide = false（适配手机/PC）
+    game:GetService("RunService").Stepped:Connect(function()
+        if character and character.Parent then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide == true then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+end
+
+-- 当角色加载时应用
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char:WaitForChild("HumanoidRootPart")
+    task.wait(1) -- 等待角色加载完成
+    noClip(char)
+end)
+
+-- 如果角色已存在（比如运行时已经在场景里）
+if LocalPlayer.Character then
+    noClip(LocalPlayer.Character)
+end
